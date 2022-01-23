@@ -111,34 +111,158 @@ def mark_move(i: int, j: int, board: list, symbol: str):
     """
     board[i][j] = symbol
 
-def play_against_agent(agent_policy_file):
-    board = get_empty_board()
-    agent = Agent("Trained Agent", X_POS, exploration_rate=0)
-    agent.load_agent_policy(agent_policy_file)
 
-    player = Player("Human", O_POS)
 
-    agent_turn = True
-    while True:
-        display_board(board)
-        current_player = agent if agent_turn else player
-        print(f"{current_player.name} turn: ")
-        agent_turn = not agent_turn
-        action = current_player.get_next_action(board)
-        mark_move(action[0], action[1], board, current_player.symbol)
-        print()
-        # check if there's a winner or if there's a draw
-        winner, is_draw = get_winner(board)
-        if (is_draw) or (winner != EMPTY_POS):
-            break
+def one_hot(state):
+	current_state = []
+
+	for square in state:
+		if square == 0:
+			current_state.append(1)
+			current_state.append(0)
+			current_state.append(0)
+		elif square == 1:
+			current_state.append(0)
+			current_state.append(1)
+			current_state.append(0)
+		elif square == -1:
+			current_state.append(0)
+			current_state.append(0)
+			current_state.append(1)
+
+	return current_state
+
+def flatten(board):
+    return [item for sublist in board for item in sublist]
+
+
+def board_to_int(board):
+    list = board
+
     
-    display_board(board)
-    if is_draw:
-        print("Draw!")
+    return [int(y) if y.lstrip('-').isdigit() else y for y in [x.replace('X', '1').replace(' ', '0').replace('O', '-1') for x in list]]
 
+
+def play_against_agent(agent_policy_file, use_neural_network_agent):
+    
+
+    agent_turn = False
+    if use_neural_network_agent:
+
+        board = get_empty_board()
+        agent = Agent("Trained Agent", O_POS, exploration_rate=0)
+        agent.load_agent_policy(agent_policy_file)
+        model = load_model('tic_tac_toe_2.h5')
+        player = Player("Human", X_POS)
+
+        
+        ##  AI
+        
+        #print(board_to_int(flatten(board)))
+        print(board)
+
+        while True:
+
+            display_board(board)
+            current_player = agent if agent_turn else player
+            print(f"{current_player.name} turn: ")
+            
+            action = current_player.get_next_action(board)
+            if not agent_turn:
+                mark_move(action[0], action[1], board, current_player.symbol)
+            
+            
+            
+
+
+
+
+            pre = model.predict(np.asarray([one_hot(board_to_int(flatten(board)))]), batch_size=1)[0]
+            print('')
+            board_copy = board_to_int(flatten(board))
+            highest = -1000
+            square = -1
+            for j in range(0, 9):
+                if board_copy[j] == 0:
+                    if pre[j] > highest:
+                        highest = pre[j].copy()
+                        square = j
+
+            print("Q values ",pre)
+            row = 0
+            col = 0
+            if square <= 2:
+                row = 0 
+                col = square
+                agent_turn = not agent_turn
+                current_player = agent if agent_turn else player
+                mark_move(row, col, board, current_player.symbol)
+                agent_turn = not agent_turn
+            elif square <= 5:
+                row = 1 
+                col = square - 3
+                agent_turn = not agent_turn
+                current_player = agent if agent_turn else player
+                mark_move(row, col, board, current_player.symbol)
+                agent_turn = not agent_turn
+            else:
+                row = 2 
+                col = square - 6
+                agent_turn = not agent_turn
+                current_player = agent if agent_turn else player
+                mark_move(row, col, board, current_player.symbol)
+                agent_turn = not agent_turn
+            ##
+            # check if there's a winner or if there's a draw
+            winner, is_draw = get_winner(board)
+            if (is_draw) or (winner != EMPTY_POS):
+                break
+        
+        display_board(board)
+        if is_draw:
+            print("Draw!")
+
+        else:
+            winner_name = agent.name if winner == agent.symbol else player.name
+            print(f"{winner_name} wins!")
     else:
-        winner_name = agent.name if winner == agent.symbol else player.name
-        print(f"{winner_name} wins!")
+
+        board = get_empty_board()
+        agent = Agent("Trained Agent", X_POS, exploration_rate=0)
+        agent.load_agent_policy(agent_policy_file)
+        player = Player("Human", O_POS)
+
+
+        while True:
+
+            display_board(board)
+            current_player = agent if agent_turn else player
+            print(f"{current_player.name} turn: ")
+            agent_turn = not agent_turn
+            action = current_player.get_next_action(board)
+            mark_move(action[0], action[1], board, current_player.symbol)
+            ##  AI
+            
+            #print(board_to_int(flatten(board)))
+            print(board)
+
+            
+                
+
+
+            ##
+            # check if there's a winner or if there's a draw
+            winner, is_draw = get_winner(board)
+            if (is_draw) or (winner != EMPTY_POS):
+                break
+        
+        display_board(board)
+        if is_draw:
+            print("Draw!")
+
+        else:
+            winner_name = agent.name if winner == agent.symbol else player.name
+            print(f"{winner_name} wins!")
 
 class Player:
     def __init__(self, name, symbol):
@@ -354,168 +478,6 @@ class AgentTrainer:
 
 
 
-#################Neural Network Model (Deep Learning) -----------START----------########################
-reward_dep = .7
-x_train = True
-
-model = Sequential()
-model.add(Dense(units=130, activation='relu', input_dim=27, kernel_initializer='random_uniform', bias_initializer='zeros'))
-model.add(Dense(units=250, activation='relu', kernel_initializer='random_uniform', bias_initializer='zeros'))
-model.add(Dense(units=140, activation='relu', kernel_initializer='random_uniform', bias_initializer='zeros'))
-model.add(Dense(units=60, activation='relu', kernel_initializer='random_uniform', bias_initializer='zeros'))
-model.add(Dense(9, kernel_initializer='random_uniform', bias_initializer='zeros'))
-model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
-
-model_2 = Sequential()
-model_2.add(Dense(units=130, activation='relu', input_dim=27, kernel_initializer='random_uniform', bias_initializer='zeros'))
-model_2.add(Dense(units=250, activation='relu', kernel_initializer='random_uniform', bias_initializer='zeros'))
-model_2.add(Dense(units=140, activation='relu', kernel_initializer='random_uniform', bias_initializer='zeros'))
-model_2.add(Dense(units=60, activation='relu', kernel_initializer='random_uniform', bias_initializer='zeros'))
-model_2.add(Dense(9, kernel_initializer='random_uniform', bias_initializer='zeros'))
-model_2.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
-
-
-
-
-def one_hot(state):
-	current_state = []
-
-	for square in state:
-		if square == 0:
-			current_state.append(1)
-			current_state.append(0)
-			current_state.append(0)
-		elif square == 1:
-			current_state.append(0)
-			current_state.append(1)
-			current_state.append(0)
-		elif square == -1:
-			current_state.append(0)
-			current_state.append(0)
-			current_state.append(1)
-
-	return current_state
-
-
-
-
-def get_outcome(state):
-	total_reward = 0
-
-	
-
-	if (state[0] == state[1] == state[2]) and not state[0] == 0:
-		total_reward = state[0]	
-	elif (state[3] == state[4] == state[5]) and not state[3] == 0:
-		total_reward = state[3]	
-	elif (state[6] == state[7] == state[8]) and not state[6] == 0:
-		total_reward = state[6]	
-	elif (state[0] == state[3] == state[6]) and not state[0] == 0:
-		total_reward = state[0]	
-	elif (state[1] == state[4] == state[7]) and not state[1] == 0:
-		total_reward = state[1]	
-	elif (state[2] == state[5] == state[8]) and not state[2] == 0:
-		total_reward = state[2]	
-	elif (state[0] == state[4] == state[8]) and not state[0] == 0:
-		total_reward = state[0]	
-	elif (state[2] == state[4] == state[6]) and not state[2] == 0:
-		total_reward = state[2]
-
-	return total_reward
-
-try:
-	model = load_model('tic_tac_toe.h5')
-	model_2 = load_model('tic_tac_toe_2.h5')
-	print('Pre-existing model found... loading data.')
-except:
-	pass
-
-
-
-
-
-def process_games(games, model, model_2):
-	global x_train
-	xt = 0
-	ot = 0
-	dt = 0
-	states = []
-	q_values = []
-	states_2 = []
-	q_values_2 = []
-
-	for game in games:
-		total_reward = get_outcome(game[len(game) - 1])
-		if total_reward == -1:
-			ot += 1
-		elif total_reward == 1:
-			xt += 1
-		else:
-			dt += 1
-		# print('------------------')
-		# print(game[len(game) - 1][0], game[len(game) - 1][1], game[len(game) - 1][2])
-		# print(game[len(game) - 1][3], game[len(game) - 1][4], game[len(game) - 1][5])
-		# print(game[len(game) - 1][6], game[len(game) - 1][7], game[len(game) - 1][8])
-		# print('reward =', total_reward)
-
-		for i in range(0, len(game) - 1):
-			if i % 2 == 0:
-				for j in range(0, 9):
-					if not game[i][j] == game[i + 1][j]:
-						reward_vector = np.zeros(9)
-						reward_vector[j] = total_reward*(reward_dep**(math.floor((len(game) - i) / 2) - 1))
-						# print(reward_vector)
-						states.append(game[i].copy())
-						q_values.append(reward_vector.copy())
-			else:
-				for j in range(0, 9):
-					if not game[i][j] == game[i + 1][j]:
-						reward_vector = np.zeros(9)
-						reward_vector[j] = -1*total_reward*(reward_dep**(math.floor((len(game) - i) / 2) - 1))
-						# print(reward_vector)
-						states_2.append(game[i].copy())
-						q_values_2.append(reward_vector.copy())
-
-	if x_train:
-		zipped = list(zip(states, q_values))
-		random.shuffle(zipped)
-		states, q_values = zip(*zipped)
-		new_states = []
-		for state in states:
-			new_states.append(one_hot(state))
-
-		# for i in range(0, len(states)):
-			# print(new_states[i], states[i], q_values[i])
-			# print(np.asarray(new_states))
-
-		model.fit(np.asarray(new_states), np.asarray(q_values), epochs=4, batch_size=len(q_values), verbose=1)
-		model.save('tic_tac_toe.h5')
-		del model
-		model = load_model('tic_tac_toe.h5')
-		print(xt/20, ot/20, dt/20)
-	else:
-		zipped = list(zip(states_2, q_values_2))
-		random.shuffle(zipped)
-		states_2, q_values_2 = zip(*zipped)
-		new_states = []
-		for state in states_2:
-			new_states.append(one_hot(state))
-
-		# for i in range(0, len(states)):
-			# print(new_states[i], states[i], q_values[i])
-			# print(np.asarray(new_states))
-
-		model_2.fit(np.asarray(new_states), np.asarray(q_values_2), epochs=4, batch_size=len(q_values_2), verbose=1)
-		model_2.save('tic_tac_toe_2.h5')
-		del model_2
-		model_2 = load_model('tic_tac_toe_2.h5')
-		print(xt/20, ot/20, dt/20)
-
-	x_train = not x_train
-
-# win = 1; draw = 0; loss = -1 --> moves not taken are 0 in q vector
-
-#################Neural Network Model (Deep Learning)-----------END----------########################
 
 def main():
     if "y" in input("Train a new agent?(y/n) ").lower():
@@ -530,12 +492,18 @@ def main():
         agent_trainer.agent1.save_agent_policy("trained_agent_policy.json")
 
     # compete againt the bot
-    if os.path.exists("trained_agent_policy.json"):
-        print("Playing against the trained agent")
-        play_against_agent("trained_agent_policy.json")
-    
+    if '1' in input('Play against Neureul network agent? 1 -----> yes / 2 -----> no '):
+        play_against_agent("trained_agent_policy.json", True)
     else:
-        print("Couldn't find any trained agents to play against! You have to train an agent first!")
+        
+        if os.path.exists("trained_agent_policy.json"):
+            print("Playing against the trained agent")
+            play_against_agent("trained_agent_policy.json", False)
+
+        else:
+            print("Couldn't find any trained agents to play against! You have to train an agent first!")
+        
+
 
 if __name__ == "__main__":
     main()
