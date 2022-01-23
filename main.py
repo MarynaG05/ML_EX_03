@@ -152,7 +152,7 @@ def play_against_agent(agent_policy_file, use_neural_network_agent):
         board = get_empty_board()
         agent = Agent("Trained Agent", O_POS, exploration_rate=0)
         agent.load_agent_policy(agent_policy_file)
-        model = load_model('tic_tac_toe_2.h5')
+        model = load_model('tic_tac_toe_X.h5')
         player = Player("Human", X_POS)
 
         
