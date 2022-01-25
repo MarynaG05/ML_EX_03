@@ -156,10 +156,10 @@ def play_against_agent(agent_policy_file, use_neural_network_agent):
         player = Player("Human", X_POS)
 
         
-        ##  AI
         
-        #print(board_to_int(flatten(board)))
-        print(board)
+        
+        
+        
 
         while True:
 
@@ -228,9 +228,9 @@ def play_against_agent(agent_policy_file, use_neural_network_agent):
     else:
 
         board = get_empty_board()
-        agent = Agent("Trained Agent", X_POS, exploration_rate=0)
+        agent = Agent("Trained Agent", O_POS, exploration_rate=0)
         agent.load_agent_policy(agent_policy_file)
-        player = Player("Human", O_POS)
+        player = Player("Human", X_POS)
 
 
         while True:
@@ -241,16 +241,13 @@ def play_against_agent(agent_policy_file, use_neural_network_agent):
             agent_turn = not agent_turn
             action = current_player.get_next_action(board)
             mark_move(action[0], action[1], board, current_player.symbol)
-            ##  AI
             
-            #print(board_to_int(flatten(board)))
-            print(board)
 
             
                 
 
 
-            ##
+            
             # check if there's a winner or if there's a draw
             winner, is_draw = get_winner(board)
             if (is_draw) or (winner != EMPTY_POS):
